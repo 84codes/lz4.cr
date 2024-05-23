@@ -32,19 +32,13 @@ class Compress::LZ4::Writer < IO
   @pref : LibLZ4::PreferencesT
   @opts = LibLZ4::CompressOptionsT.new(stable_src: 0)
   @header_written = false
+  MaxSrcSize = 64 * 1024
 
   def initialize(@output : IO, options = CompressOptions.new, @sync_close = false)
     ret = LibLZ4.create_compression_context(out @context, LibLZ4::VERSION)
     raise_if_error(ret, "Failed to create compression context")
     @pref = options.to_preferences
-    @block_size = case options.block_size
-                  in BlockSize::Default  then 64 * 1024
-                  in BlockSize::Max64Kb  then 64 * 1024
-                  in BlockSize::Max256Kb then 256 * 1024
-                  in BlockSize::Max1Mb   then 1024 * 1024
-                  in BlockSize::Max4Mb   then 4 * 1024 * 1024
-                  end
-    buffer_size = LibLZ4.compress_bound(@block_size, pointerof(@pref))
+    buffer_size = LibLZ4.compress_bound(MaxSrcSize, pointerof(@pref))
     @buffer = Bytes.new(buffer_size)
   end
 
@@ -92,7 +86,7 @@ class Compress::LZ4::Writer < IO
     write_header
     @uncompressed_bytes &+= slice.size
     until slice.empty?
-      read_size = Math.min(slice.size, @block_size)
+      read_size = Math.min(slice.size, MaxSrcSize)
       ret = LibLZ4.compress_update(@context, @buffer, @buffer.size, slice, read_size, pointerof(@opts))
       raise_if_error(ret, "Failed to compress")
       @compressed_bytes &+= ret
