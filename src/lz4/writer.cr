@@ -87,6 +87,7 @@ class Compress::LZ4::Writer < IO
     @uncompressed_bytes &+= slice.size
     until slice.empty?
       read_size = Math.min(slice.size, MaxSrcSize)
+      @opts.stable_src = slice.size > MaxSrcSize ? 1 : 0
       ret = LibLZ4.compress_update(@context, @buffer, @buffer.size, slice, read_size, pointerof(@opts))
       raise_if_error(ret, "Failed to compress")
       @compressed_bytes &+= ret
