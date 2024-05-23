@@ -110,7 +110,8 @@ module Compress::LZ4
     # Streaming Decompression Function
     struct DecompressOptionsT
       stable_dst : LibC::UInt
-      reserved : LibC::UInt[3]
+      skip_checksums : LibC::UInt
+      reserved : LibC::UInt[2]
     end
 
     fun header_size = LZ4F_headerSize(src : Void*, src_size : LibC::SizeT) : LibC::SizeT
