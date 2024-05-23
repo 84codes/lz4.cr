@@ -23,7 +23,7 @@ require "./lib"
 #   end
 # end
 # ```
-class Compress::LZ4::Writer < IO
+class Compress::LZ4::Writer < ::IO
   property? sync_close : Bool
   getter? closed = false
   getter compressed_bytes = 0u64
@@ -34,7 +34,7 @@ class Compress::LZ4::Writer < IO
   @header_written = false
   MaxSrcSize = 64 * 1024
 
-  def initialize(@output : IO, options = CompressOptions.new, @sync_close = false)
+  def initialize(@output : ::IO, options = CompressOptions.new, @sync_close = false)
     ret = LibLZ4.create_compression_context(out @context, LibLZ4::VERSION)
     raise_if_error(ret, "Failed to create compression context")
     @pref = options.to_preferences
@@ -49,7 +49,7 @@ class Compress::LZ4::Writer < IO
 
   # Creates a new writer to the given *io*, yields it to the given block,
   # and closes it at the end.
-  def self.open(io : IO, options = CompressOptions.new, sync_close = false)
+  def self.open(io : ::IO, options = CompressOptions.new, sync_close = false)
     writer = new(io, options: options, sync_close: sync_close)
     yield writer ensure writer.close
   end
@@ -63,7 +63,7 @@ class Compress::LZ4::Writer < IO
 
   # Creates a new writer for the given *io*, yields it to the given block,
   # and closes it at its end.
-  def self.open(io : IO, options = CompressOptions.new, sync_close = false)
+  def self.open(io : ::IO, options = CompressOptions.new, sync_close = false)
     writer = new(io, options: options, sync_close: sync_close)
     yield writer ensure writer.close
   end

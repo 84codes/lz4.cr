@@ -117,4 +117,32 @@ describe Compress::LZ4 do
       lz4.read_byte.should eq 'f'.ord
     end
   end
+
+  it "can compress and decompress a stream" do
+    a, b = IO::Stapled.pipe
+
+    wa = Compress::LZ4::Writer.new(a)
+    ra = Compress::LZ4::Reader.new(a)
+    sb = Compress::LZ4::IO.new(b)
+    wa.print "foo"
+    wa.flush
+    sb.read_string(3).should eq "foo"
+    sb.print "bar"
+    sb.flush
+    ra.read_string(3).should eq "bar"
+
+    sb.uncompressed_bytes_in.should eq 3
+    sb.uncompressed_bytes_out.should eq 3
+  end
+
+  it "can read and write large amount of data" do
+    mem = IO::Memory.new
+    io = Compress::LZ4::IO.new(mem)
+    io.print "foobar" * 100_000
+    io.write Bytes.new(64*1024)
+    io.rewind
+    100_000.times do
+      io.read_string(6)
+    end
+  end
 end

@@ -16,7 +16,7 @@ require "./lib"
 # end
 # pp string
 # ```
-class Compress::LZ4::Reader < IO
+class Compress::LZ4::Reader < ::IO
   property? sync_close : Bool
   getter? closed = false
   getter compressed_bytes = 0u64
@@ -24,7 +24,7 @@ class Compress::LZ4::Reader < IO
   @context : LibLZ4::Dctx
   @opts = LibLZ4::DecompressOptionsT.new(stable_dst: 0)
 
-  def initialize(@io : IO, @sync_close = false)
+  def initialize(@io : ::IO, @sync_close = false)
     ret = LibLZ4.create_decompression_context(out @context, LibLZ4::VERSION)
     raise_if_error(ret, "Failed to create decompression context")
     @buffer = Bytes.new(64 * 1024)
@@ -33,7 +33,7 @@ class Compress::LZ4::Reader < IO
 
   # Creates a new reader from the given *io*, yields it to the given block,
   # and closes it at its end.
-  def self.open(io : IO, sync_close : Bool = false)
+  def self.open(io : ::IO, sync_close : Bool = false)
     reader = new(io, sync_close: sync_close)
     yield reader ensure reader.close
   end
@@ -45,7 +45,7 @@ class Compress::LZ4::Reader < IO
 
   # Creates a new reader from the given *io*, yields it to the given block,
   # and closes it at the end.
-  def self.open(io : IO, sync_close = false)
+  def self.open(io : ::IO, sync_close = false)
     reader = new(io, sync_close: sync_close)
     yield reader ensure reader.close
   end
