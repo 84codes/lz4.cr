@@ -60,18 +60,22 @@ module Compress::LZ4
       Max1Mb   = 6
       Max4Mb   = 7
     end
+
     enum BlockModeT
       BlockLinked      = 0
       BlockIndependent = 1
     end
+
     enum ContentChecksumT
       NoContentChecksum      = 0
       ContentChecksumEnabled = 1
     end
+
     enum FrameTypeT
       Frame          = 0
       SkippableFrame = 1
     end
+
     enum BlockChecksumT
       NoBlockChecksum      = 0
       BlockChecksumEnabled = 1
