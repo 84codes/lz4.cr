@@ -1,8 +1,8 @@
 # Crystal LZ4 Compression
 
-Crystal bindings to the [LZ4](https://lz4.github.io/lz4/) compression library. Bindings provided in this shard cover the [frame format](https://github.com/lz4/lz4/blob/dev/doc/lz4_Frame_format.md) as the frame format is recommended one to use and guarantees interoperability with other implementations and language bindings.
+Crystal bindings to the [LZ4](https://lz4.github.io/lz4/) compression library. Bindings provided in this shard cover the [frame format](https://github.com/lz4/lz4/blob/dev/doc/lz4_Frame_format.md) as the frame format is the recommended one to use and guarantees interoperability with other implementations and language bindings.
 
-LZ4 is lossless compression algorithm, providing compression speed > 500 MB/s per core (>0.15 Bytes/cycle). It features an extremely fast decoder, with speed in multiple GB/s per core (~1 Byte/cycle).
+LZ4 is a lossless compression algorithm, providing compression speeds > 500 MB/s per core (>0.15 Bytes/cycle). It features an extremely fast decoder, with speeds in multiple GB/s per core (~1 Byte/cycle).
 
 ## Installation
 
