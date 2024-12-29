@@ -30,7 +30,6 @@ class Compress::LZ4::Writer < ::IO
   getter uncompressed_bytes = 0u64
   @context : LibLZ4::Cctx
   @pref : LibLZ4::PreferencesT
-  @opts = LibLZ4::CompressOptionsT.new(stable_src: 0)
   @header_written = false
   MaxSrcSize = 64 * 1024
 
@@ -85,10 +84,11 @@ class Compress::LZ4::Writer < ::IO
     check_open
     write_header
     @uncompressed_bytes &+= slice.size
+    opts = LibLZ4::CompressOptionsT.new(stable_src: 1)
     until slice.empty?
       read_size = Math.min(slice.size, MaxSrcSize)
-      @opts.stable_src = slice.size > MaxSrcSize ? 1 : 0
-      ret = LibLZ4.compress_update(@context, @buffer, @buffer.size, slice, read_size, pointerof(@opts))
+      opts.stable_src = slice.size > MaxSrcSize ? 1 : 0
+      ret = LibLZ4.compress_update(@context, @buffer, @buffer.size, slice, read_size, pointerof(opts))
       raise_if_error(ret, "Failed to compress")
       @compressed_bytes &+= ret
       @output.write(@buffer[0, ret])
@@ -99,7 +99,7 @@ class Compress::LZ4::Writer < ::IO
   # Flush LZ4 lib buffers even if a block isn't full
   def flush : Nil
     check_open
-    ret = LibLZ4.flush(@context, @buffer, @buffer.size, pointerof(@opts))
+    ret = LibLZ4.flush(@context, @buffer, @buffer.size, nil)
     raise_if_error(ret, "Failed to flush")
     @compressed_bytes &+= ret
     @output.write(@buffer[0, ret])
@@ -109,7 +109,7 @@ class Compress::LZ4::Writer < ::IO
   # Ends the current LZ4 frame, the stream can still be written to, unless @sync_close
   def close
     check_open
-    ret = LibLZ4.compress_end(@context, @buffer, @buffer.size, pointerof(@opts))
+    ret = LibLZ4.compress_end(@context, @buffer, @buffer.size, nil)
     raise_if_error(ret, "Failed to end frame")
     @compressed_bytes &+= ret
     @output.write(@buffer[0, ret])
