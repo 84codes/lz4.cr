@@ -22,7 +22,6 @@ class Compress::LZ4::Reader < ::IO
   getter compressed_bytes = 0u64
   getter uncompressed_bytes = 0u64
   @context : LibLZ4::Dctx
-  @opts = LibLZ4::DecompressOptionsT.new(stable_dst: 0)
 
   def initialize(@io : ::IO, @sync_close = false)
     ret = LibLZ4.create_decompression_context(out @context, LibLZ4::VERSION)
@@ -65,6 +64,7 @@ class Compress::LZ4::Reader < ::IO
   def read(slice : Bytes) : Int32
     check_open
     return 0 if slice.empty?
+    opts = LibLZ4::DecompressOptionsT.new(stable_dst: 0)
     decompressed_bytes = 0
     hint = 0u64 # the hint from the last decompression
     loop do
@@ -72,7 +72,7 @@ class Compress::LZ4::Reader < ::IO
       src_remaining = Math.min(hint, src_remaining) unless hint.zero?
       dst_remaining = slice.size.to_u64
 
-      hint = LibLZ4.decompress(@context, slice, pointerof(dst_remaining), @buffer_rem, pointerof(src_remaining), pointerof(@opts))
+      hint = LibLZ4.decompress(@context, slice, pointerof(dst_remaining), @buffer_rem, pointerof(src_remaining), pointerof(opts))
       raise_if_error(hint, "Failed to decompress")
 
       @buffer_rem += src_remaining
