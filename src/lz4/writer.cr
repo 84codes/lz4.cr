@@ -85,14 +85,25 @@ class Compress::LZ4::Writer < ::IO
     check_open
     write_header
     @uncompressed_bytes &+= slice.size
+    buffer_pos = 0
     until slice.empty?
-      read_size = Math.min(slice.size, MaxSrcSize)
       @opts.stable_src = slice.size > MaxSrcSize ? 1 : 0
-      ret = LibLZ4.compress_update(@context, @buffer, @buffer.size, slice, read_size, pointerof(@opts))
+      src_size = Math.min(slice.size, MaxSrcSize)
+      required_buffer_size = LibLZ4.compress_bound(src_size, pointerof(@pref))
+      if required_buffer_size > @buffer.size - buffer_pos
+        @output.write(@buffer[0, buffer_pos])
+        buffer_pos = 0
+      end
+
+      ret = LibLZ4.compress_update(@context, @buffer + buffer_pos, @buffer.size - buffer_pos, slice, src_size, pointerof(@opts))
       raise_if_error(ret, "Failed to compress")
+      buffer_pos += ret
+
       @compressed_bytes &+= ret
-      @output.write(@buffer[0, ret])
-      slice += read_size
+      slice += src_size
+    end
+    unless buffer_pos.zero?
+      @output.write(@buffer[0, buffer_pos])
     end
   end
 
