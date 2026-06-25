@@ -32,14 +32,19 @@ class Compress::LZ4::Writer < ::IO
   @pref : LibLZ4::PreferencesT
   @opts = LibLZ4::CompressOptionsT.new(stable_src: 0)
   @header_written = false
+  @block_bound : Int32
   MaxSrcSize = 64 * 1024
+  # Minimum write buffer size, so that many compressed blocks are batched into
+  # a single write to the underlying IO instead of one write per block.
+  MinBufferSize = 256 * 1024
 
   def initialize(@output : ::IO, options = CompressOptions.new, @sync_close = false)
     ret = LibLZ4.create_compression_context(out @context, LibLZ4::VERSION)
     raise_if_error(ret, "Failed to create compression context")
     @pref = options.to_preferences
-    buffer_size = LibLZ4.compress_bound(MaxSrcSize, pointerof(@pref))
-    @buffer = Bytes.new(buffer_size)
+    # Worst case compressed size of a single MaxSrcSize block
+    @block_bound = LibLZ4.compress_bound(MaxSrcSize, pointerof(@pref)).to_i32
+    @buffer = Bytes.new(Math.max(@block_bound, MinBufferSize))
   end
 
   # Creates a new writer to the given *filename*.
@@ -49,21 +54,21 @@ class Compress::LZ4::Writer < ::IO
 
   # Creates a new writer to the given *io*, yields it to the given block,
   # and closes it at the end.
-  def self.open(io : ::IO, options = CompressOptions.new, sync_close = false)
+  def self.open(io : ::IO, options = CompressOptions.new, sync_close = false, &)
     writer = new(io, options: options, sync_close: sync_close)
     yield writer ensure writer.close
   end
 
   # Creates a new writer to the given *filename*, yields it to the given block,
   # and closes it at the end.
-  def self.open(filename : String, options = CompressOptions.new)
+  def self.open(filename : String, options = CompressOptions.new, &)
     writer = new(filename, options: options)
     yield writer ensure writer.close
   end
 
   # Creates a new writer for the given *io*, yields it to the given block,
   # and closes it at its end.
-  def self.open(io : ::IO, options = CompressOptions.new, sync_close = false)
+  def self.open(io : ::IO, options = CompressOptions.new, sync_close = false, &)
     writer = new(io, options: options, sync_close: sync_close)
     yield writer ensure writer.close
   end
@@ -89,8 +94,9 @@ class Compress::LZ4::Writer < ::IO
     until slice.empty?
       @opts.stable_src = slice.size > MaxSrcSize ? 1 : 0
       src_size = Math.min(slice.size, MaxSrcSize)
-      required_buffer_size = LibLZ4.compress_bound(src_size, pointerof(@pref))
-      if required_buffer_size > @buffer.size - buffer_pos
+      # Flush the buffer if the next block might not fit (@block_bound is the
+      # worst case for any src_size <= MaxSrcSize)
+      if @block_bound > @buffer.size - buffer_pos
         @output.write(@buffer[0, buffer_pos])
         buffer_pos = 0
       end
