@@ -1,5 +1,8 @@
 module Compress::LZ4
-  @[Link("lz4")]
+  # Statically link against the vendored LZ4 (vendor/lz4 git submodule).
+  # The static archive is produced by `make -C vendor/lz4/lib liblz4.a`
+  # (run automatically via the shard's postinstall script and the Makefile).
+  @[Link(ldflags: "#{__DIR__}/../../vendor/lz4/lib/liblz4.a")]
   lib LibLZ4
     alias ErrorCodeT = LibC::SizeT
     alias Uint32T = LibC::UInt
@@ -7,8 +10,8 @@ module Compress::LZ4
     alias Uint8T = UInt8
 
     VERSION_MAJOR   =          1
-    VERSION_MINOR   =          9
-    VERSION_RELEASE =          2
+    VERSION_MINOR   =         10
+    VERSION_RELEASE =          0
     MEMORY_USAGE    =         14
     MAX_INPUT_SIZE  = 2113929216
 

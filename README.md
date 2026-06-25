@@ -4,6 +4,8 @@ Crystal bindings to the [LZ4](https://lz4.github.io/lz4/) compression library. B
 
 LZ4 is a lossless compression algorithm, providing compression speeds > 500 MB/s per core (>0.15 Bytes/cycle). It features an extremely fast decoder, with speeds in multiple GB/s per core (~1 Byte/cycle).
 
+The LZ4 C library is vendored as a git submodule (`vendor/lz4`, pinned to a stable release) and linked **statically**, so there's no need for a system-installed `liblz4` and no runtime shared-library dependency.
+
 ## Installation
 
 1. Add the dependency to your `shard.yml`:
@@ -15,6 +17,12 @@ LZ4 is a lossless compression algorithm, providing compression speeds > 500 MB/s
    ```
 
 2. Run `shards install`
+
+   The shard's `postinstall` script checks out the `vendor/lz4` submodule and
+   builds the static library (`vendor/lz4/lib/liblz4.a`) that the bindings link
+   against. If you cloned this repository directly, run `make` (or
+   `git submodule update --init && make -C vendor/lz4/lib liblz4.a`) before
+   building.
 
 ## Usage
 
