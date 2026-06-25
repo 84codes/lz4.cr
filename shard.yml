@@ -11,3 +11,9 @@ description: |
 crystal: ">= 0.36.0, < 2.0.0"
 
 license: MIT
+
+scripts:
+  # Build the vendored LZ4 static library so it can be linked statically.
+  # `git submodule update --init` ensures the vendor/lz4 submodule is checked
+  # out when this shard is installed as a dependency.
+  postinstall: git submodule update --init --recursive && make -C vendor/lz4/lib liblz4.a
