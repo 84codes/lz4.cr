@@ -32,14 +32,19 @@ class Compress::LZ4::Writer < ::IO
   @pref : LibLZ4::PreferencesT
   @opts = LibLZ4::CompressOptionsT.new(stable_src: 0)
   @header_written = false
+  @block_bound : Int32
   MaxSrcSize = 64 * 1024
+  # Minimum write buffer size, so that many compressed blocks are batched into
+  # a single write to the underlying IO instead of one write per block.
+  MinBufferSize = 256 * 1024
 
   def initialize(@output : ::IO, options = CompressOptions.new, @sync_close = false)
     ret = LibLZ4.create_compression_context(out @context, LibLZ4::VERSION)
     raise_if_error(ret, "Failed to create compression context")
     @pref = options.to_preferences
-    buffer_size = LibLZ4.compress_bound(MaxSrcSize, pointerof(@pref))
-    @buffer = Bytes.new(buffer_size)
+    # Worst case compressed size of a single MaxSrcSize block
+    @block_bound = LibLZ4.compress_bound(MaxSrcSize, pointerof(@pref)).to_i32
+    @buffer = Bytes.new(Math.max(@block_bound, MinBufferSize))
   end
 
   # Creates a new writer to the given *filename*.
@@ -85,14 +90,26 @@ class Compress::LZ4::Writer < ::IO
     check_open
     write_header
     @uncompressed_bytes &+= slice.size
+    buffer_pos = 0
     until slice.empty?
-      read_size = Math.min(slice.size, MaxSrcSize)
       @opts.stable_src = slice.size > MaxSrcSize ? 1 : 0
-      ret = LibLZ4.compress_update(@context, @buffer, @buffer.size, slice, read_size, pointerof(@opts))
+      src_size = Math.min(slice.size, MaxSrcSize)
+      # Flush the buffer if the next block might not fit (@block_bound is the
+      # worst case for any src_size <= MaxSrcSize)
+      if @block_bound > @buffer.size - buffer_pos
+        @output.write(@buffer[0, buffer_pos])
+        buffer_pos = 0
+      end
+
+      ret = LibLZ4.compress_update(@context, @buffer + buffer_pos, @buffer.size - buffer_pos, slice, src_size, pointerof(@opts))
       raise_if_error(ret, "Failed to compress")
+      buffer_pos += ret
+
       @compressed_bytes &+= ret
-      @output.write(@buffer[0, ret])
-      slice += read_size
+      slice += src_size
+    end
+    unless buffer_pos.zero?
+      @output.write(@buffer[0, buffer_pos])
     end
   end
 
