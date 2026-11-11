@@ -135,6 +135,39 @@ describe Compress::LZ4 do
     sb.uncompressed_bytes_out.should eq 3
   end
 
+  it "can flush a writer before anything is written" do
+    output = IO::Memory.new
+    lz4 = Compress::LZ4::Writer.new(output)
+    lz4.flush
+    output.bytesize.should eq 0
+    lz4.print "foo"
+    lz4.close
+    Compress::LZ4.decode(output.to_slice).should eq "foo".to_slice
+  end
+
+  it "closes a writer that nothing was written to as an empty frame" do
+    output = IO::Memory.new
+    Compress::LZ4::Writer.new(output).close
+    output.bytesize.should be > 0
+    Compress::LZ4.decode(output.to_slice).should eq Bytes.empty
+  end
+
+  it "can flush an IO before anything is written" do
+    a, b = IO::Stapled.pipe
+    wa = Compress::LZ4::IO.new(a)
+    rb = Compress::LZ4::Reader.new(b)
+    wa.flush
+    wa.print "foo"
+    wa.flush
+    rb.read_string(3).should eq "foo"
+  end
+
+  it "closes an IO that nothing was written to as an empty frame" do
+    output = IO::Memory.new
+    Compress::LZ4::IO.new(output).close
+    Compress::LZ4.decode(output.to_slice).should eq Bytes.empty
+  end
+
   it "can read and write large amount of data" do
     mem = IO::Memory.new
     io = Compress::LZ4::IO.new(mem)
