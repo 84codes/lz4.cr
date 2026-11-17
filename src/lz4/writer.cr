@@ -99,16 +99,21 @@ class Compress::LZ4::Writer < ::IO
   # Flush LZ4 lib buffers even if a block isn't full
   def flush : Nil
     check_open
-    ret = LibLZ4.flush(@context, @buffer, @buffer.size, pointerof(@opts))
-    raise_if_error(ret, "Failed to flush")
-    @compressed_bytes &+= ret
-    @output.write(@buffer[0, ret])
+    # Nothing is buffered before the frame begins, and liblz4 1.11 refuses to
+    # flush a context that hasn't begun one
+    if @header_written
+      ret = LibLZ4.flush(@context, @buffer, @buffer.size, pointerof(@opts))
+      raise_if_error(ret, "Failed to flush")
+      @compressed_bytes &+= ret
+      @output.write(@buffer[0, ret])
+    end
     @output.flush
   end
 
   # Ends the current LZ4 frame, the stream can still be written to, unless @sync_close
   def close
     check_open
+    write_header # an empty frame, liblz4 1.11 refuses to end one that never began
     ret = LibLZ4.compress_end(@context, @buffer, @buffer.size, pointerof(@opts))
     raise_if_error(ret, "Failed to end frame")
     @compressed_bytes &+= ret
